@@ -158,3 +158,40 @@ ingest_task = SparkSubmitOperator(
     dag=dag
 )
 
+```
+from airflow import DAG
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from datetime import datetime, timedelta
+
+# Default args
+default_args = {
+    'owner': 'vidhi',
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+# Define DAG
+with DAG(
+    dag_id='daily_spark_ingestion',
+    default_args=default_args,
+    description='Run daily Spark ingestion job (Java JAR)',
+    start_date=datetime(2025, 9, 1),
+    schedule_interval='@daily',
+    catchup=False,
+) as dag:
+
+    # Spark Submit Task (must be indented)
+    ingest_task = SparkSubmitOperator(
+        task_id='run_spark_ingestion',
+        application='/opt/airflow/dags/airline-delay-ingestion.jar',
+        java_class='com.spark.DataIngestion',
+        conn_id='spark_default',
+        application_args=[
+            '/opt/airflow/dags/Airline_Delay_Cause.csv',
+            '/opt/airflow/dags/output/ingested_data'
+        ],
+        verbose=True
+    )
+
+    ingest_task
+```
