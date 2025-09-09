@@ -143,4 +143,18 @@ services:
 
 volumes:
   postgres-db-volume:
+```
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+
+ingest_task = SparkSubmitOperator(
+    task_id='run_spark_ingestion',
+    application='/opt/airflow/dags/airline-delay-ingestion.jar',
+    java_class='com.spark.DataIngestion',
+    conn_id='spark_default',
+    application_args=[
+        '/opt/airflow/dags/Airline_Delay_Cause.csv',
+        '/opt/airflow/dags/output/ingested_data'
+    ],
+    dag=dag
+)
 
