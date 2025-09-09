@@ -14,3 +14,67 @@ ENV SPARK_HOME=/opt/spark
 ENV PATH=$PATH:$SPARK_HOME/bin
 
 USER airflow
+```
+```
+version: '3'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    image: puckel/docker-airflow:1.10.9
+    depends_on:
+      - postgres
+    environment:
+      - EXECUTOR=Local
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    entrypoint: >
+      /bin/bash -c "airflow initdb && airflow create_user -r Admin -u admin -p admin -e admin@example.com -f Air -l Flow"
+
+  webserver:
+    image: puckel/docker-airflow:1.10.9
+    restart: always
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      - EXECUTOR=Local
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    ports:
+      - "8080:8080"
+    command: webserver
+
+  scheduler:
+    image: puckel/docker-airflow:1.10.9
+    restart: always
+    depends_on:
+      - webserver
+      - postgres
+    environment:
+      - EXECUTOR=Local
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    command: scheduler
+
+  spark:
+    image: bitnami/spark:3.4.2
+    environment:
+      - SPARK_MODE=master
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "7077:7077"
+      - "8081:8080"
+
+volumes:
+  postgres-db-volume:
+```
