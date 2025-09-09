@@ -78,3 +78,69 @@ services:
 volumes:
   postgres-db-volume:
 ```
+
+```
+version: '3'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    image: apache/airflow:2.10.2
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+    entrypoint: >
+      /bin/bash -c "airflow db init &&
+                    airflow users create --username admin --password admin --firstname Air --lastname Flow --role Admin --email admin@example.com"
+
+  webserver:
+    image: apache/airflow:2.10.2
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "8080:8080"
+    command: webserver
+
+  scheduler:
+    image: apache/airflow:2.10.2
+    depends_on:
+      - webserver
+      - postgres
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+    command: scheduler
+
+  spark:
+    image: bitnami/spark:3.4.2
+    environment:
+      - SPARK_MODE=master
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "7077:7077"
+      - "8081:8080"
+
+volumes:
+  postgres-db-volume:
+
